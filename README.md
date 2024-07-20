@@ -10,3 +10,17 @@ The `cdk.json` file tells the CDK toolkit how to execute your app.
  * `cdk diff`        compare deployed stack with current state
  * `cdk synth`       emits the synthesized CloudFormation template
  * `go test`         run unit tests
+
+### start
+
+cdk init app --language go
+go get
+
+### codepipeline
+
+1. codestarは手動で作成
+2. cdk deploy '*' --profile <aws_account>
+
+### 注意点
+
+※ 現状トリガーが起動していない

@@ -17,3 +17,12 @@
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# codebuild
+codebuild/logs/*
+codebuild/test/*
+codebuild/codebuild_build.sh
+codebuild/env.local
+
+# env
+env/*.env

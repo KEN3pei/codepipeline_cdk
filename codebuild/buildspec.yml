@@ -1,0 +1,27 @@
+version: 0.2
+
+env:
+  secrets-manager:
+    DOCKERHUB_USER: ${SECRETS_NAME}:DOCKERHUB_USER
+    DOCKERHUB_PASS: ${SECRETS_NAME}:DOCKERHUB_PASS
+
+phases:
+  pre_build:
+    commands:
+      - echo pre_build started on `date`
+      - echo "${AWS_PROFILE} ${AWS_DEFAULT_REGION}"
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo $DOCKERHUB_PASS | docker login  -u $DOCKERHUB_USER --password-stdin
+      
+  build:
+    commands:
+      - echo Build started on `date`
+      - docker build . -t simple-web-app
+      - docker tag simple-web-app $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/simple-web-goapp:latest
+      - docker images
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/simple-web-goapp:latest
+  post_build:
+    commands:
+      - echo Build completed on `date`
+

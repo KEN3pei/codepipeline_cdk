@@ -1,29 +1,122 @@
 package main
 
 import (
+	"cdk/env"
+	"fmt"
+	"os"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
-	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscodebuild"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscodepipeline"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscodepipelineactions"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+	"github.com/joho/godotenv"
 )
 
-type CdkStackProps struct {
+type CodePipelineProps struct {
 	awscdk.StackProps
 }
 
-func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) awscdk.Stack {
+func NewCodePipelineStack(scope constructs.Construct, id string, props *CodePipelineProps) awscdk.Stack {
 	var sprops awscdk.StackProps
 	if props != nil {
 		sprops = props.StackProps
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	// The code that defines your stack goes here
+	// パイプラインv2の初期化
+	pipeline := awscodepipeline.NewPipeline(stack, jsii.String(os.Getenv("PIPELINE_NAME")), &awscodepipeline.PipelineProps{
+		PipelineName:     jsii.String(os.Getenv("PIPELINE_NAME")),
+		CrossAccountKeys: jsii.Bool(false),
+		PipelineType:     awscodepipeline.PipelineType_V2,
+	})
 
-	// example resource
-	// queue := awssqs.NewQueue(stack, jsii.String("CdkQueue"), &awssqs.QueueProps{
-	// 	VisibilityTimeout: awscdk.Duration_Seconds(jsii.Number(300)),
-	// })
+	// Githubからソース取得
+	sourceOutput := awscodepipeline.NewArtifact(jsii.String(os.Getenv("PROJECT") + "_Artifact"))
+	sourceAction := awscodepipelineactions.NewCodeStarConnectionsSourceAction(&awscodepipelineactions.CodeStarConnectionsSourceActionProps{
+		ActionName:         jsii.String(os.Getenv("PROJECT") + "_SourceAction"),
+		Owner:              jsii.String(os.Getenv("SOURCE_OWNER")),
+		Repo:               jsii.String(os.Getenv("SOURCE_REPOSITORY")),
+		Output:             sourceOutput,
+		Branch:             jsii.String(os.Getenv("SOURCE_BRANCH")),
+		ConnectionArn:      jsii.String(os.Getenv("SOURCE_CONNECTION_ARN")),
+		VariablesNamespace: env.GetNilOrStrEnv("SOURCE_NAME_SPACE"),
+	})
+
+	role := awsiam.NewRole(stack, jsii.String("CodeBuildTrustPolicy"), &awsiam.RoleProps{
+		AssumedBy: awsiam.NewServicePrincipal(jsii.String("codebuild.amazonaws.com"), nil),
+	})
+	// secret-managerアクセス用Role
+	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Actions: &[]*string{
+			jsii.String("secretsmanager:GetSecretValue"),
+		},
+		Resources: &[]*string{
+			jsii.String(os.Getenv("SECRETS_MANAGER_ARN")),
+		},
+	}))
+	// ECRアクセス・PUSH用Role
+	role.AddToPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Actions: &[]*string{
+			jsii.String("ecr:GetAuthorizationToken"),
+			jsii.String("ecr:CompleteLayerUpload"),
+			jsii.String("ecr:GetAuthorizationToken"),
+			jsii.String("ecr:UploadLayerPart"),
+			jsii.String("ecr:InitiateLayerUpload"),
+			jsii.String("ecr:BatchCheckLayerAvailability"),
+			jsii.String("ecr:PutImage"),
+		},
+		Resources: &[]*string{
+			jsii.String(os.Getenv("ECR_REPOSITORY_ARN")),
+		},
+	}))
+
+	// ビルドプロジェクト定義
+	project := awscodebuild.NewProject(stack, jsii.String(os.Getenv("PROJECT")+"_BuildProject"), &awscodebuild.ProjectProps{
+		BuildSpec: awscodebuild.BuildSpec_FromAsset(jsii.String("codebuild/buildspec.yml")),
+		Role:      role,
+	})
+	// ビルドアクション定義
+	buildAction := awscodepipelineactions.NewCodeBuildAction(&awscodepipelineactions.CodeBuildActionProps{
+		ActionName: jsii.String(os.Getenv("PROJECT") + "_Action"),
+		Project:    project,
+		Input:      sourceOutput,
+		EnvironmentVariables: &map[string]*awscodebuild.BuildEnvironmentVariable{
+			"SECRETS_NAME": {
+				Value: os.Getenv("SECRETS_MANAGER_ARN"),
+			},
+		},
+	})
+
+	// ソースステージ追加
+	pipeline.AddStage(&awscodepipeline.StageOptions{
+		StageName: jsii.String("Source"),
+		Actions: &[]awscodepipeline.IAction{
+			sourceAction,
+		},
+	})
+	// ビルドステージ追加
+	pipeline.AddStage(&awscodepipeline.StageOptions{
+		StageName: jsii.String("Build"),
+		Actions: &[]awscodepipeline.IAction{
+			buildAction,
+		},
+	})
+
+	// トリガーの設定
+	pipeline.AddTrigger(&awscodepipeline.TriggerProps{
+		ProviderType: awscodepipeline.ProviderType_CODE_STAR_SOURCE_CONNECTION,
+		GitConfiguration: &awscodepipeline.GitConfiguration{
+			SourceAction: sourceAction,
+			PushFilter: &[]*awscodepipeline.GitPushFilter{
+				{
+					TagsIncludes: env.GetStringsEnv("GIT_PUSH_FILTER_INCLUDE_TAGS"),
+				},
+			},
+		},
+	})
 
 	return stack
 }
@@ -31,40 +124,18 @@ func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) aw
 func main() {
 	defer jsii.Close()
 
+	loadEnv()
+
 	app := awscdk.NewApp(nil)
 
-	NewCdkStack(app, "CdkStack", &CdkStackProps{
-		awscdk.StackProps{
-			Env: env(),
-		},
-	})
+	NewCodePipelineStack(app, "CodePipelineCDKStack", &CodePipelineProps{})
 
 	app.Synth(nil)
 }
 
-// env determines the AWS environment (account+region) in which our stack is to
-// be deployed. For more information see: https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-func env() *awscdk.Environment {
-	// If unspecified, this stack will be "environment-agnostic".
-	// Account/Region-dependent features and context lookups will not work, but a
-	// single synthesized template can be deployed anywhere.
-	//---------------------------------------------------------------------------
-	return nil
-
-	// Uncomment if you know exactly what account and region you want to deploy
-	// the stack to. This is the recommendation for production stacks.
-	//---------------------------------------------------------------------------
-	// return &awscdk.Environment{
-	//  Account: jsii.String("123456789012"),
-	//  Region:  jsii.String("us-east-1"),
-	// }
-
-	// Uncomment to specialize this stack for the AWS Account and Region that are
-	// implied by the current CLI configuration. This is recommended for dev
-	// stacks.
-	//---------------------------------------------------------------------------
-	// return &awscdk.Environment{
-	//  Account: jsii.String(os.Getenv("CDK_DEFAULT_ACCOUNT")),
-	//  Region:  jsii.String(os.Getenv("CDK_DEFAULT_REGION")),
-	// }
+func loadEnv() {
+	err := godotenv.Load("env/" + "dev.env")
+	if err != nil {
+		fmt.Printf("読み込み出来ませんでした: %v", err)
+	}
 }
