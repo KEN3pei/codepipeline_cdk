@@ -16,11 +16,18 @@ The `cdk.json` file tells the CDK toolkit how to execute your app.
 cdk init app --language go
 go get
 
-### codepipeline
+### 事前準備
 
-1. codestarは手動で作成
-2. cdk deploy '*' --profile <aws_account>
+- codestar-connectionn（code-conneciton）でGitHubとの接続を作成しておく
+- secret-manager作成
+- CDK Bootstrap実行しておく（[bootstrap](https://docs.aws.amazon.com/ja_jp/cdk/v2/guide/bootstrapping.html)）
 
-### 注意点
+### 実行コマンド
 
-※ 現状トリガーが起動していない
+$ cdk deploy '*' --profile <aws_account>
+
+### トラブルシュート
+
+※ トリガーが起動しない
+- GitHub側のAWS Connector for GitHubでトリガー対象リポジトリが許可されていない可能性がある。
+
