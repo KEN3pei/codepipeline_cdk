@@ -1,0 +1,16 @@
+name: "Conflict Merge Check"
+
+on:
+    pull_request:
+        types: [opened, reopened]
+
+jobs:
+    conflict_check:
+        name: Conflict Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Show base and source branch name
+              run: |
+                echo "base is ${{ github.base_ref }}"
+                echo "source is ${{ github.head_ref }}"
+
