@@ -24,7 +24,9 @@ go get
 
 ### 実行コマンド
 
+```
 $ cdk deploy '*' --profile <aws_account>
+```
 
 ### トラブルシュート
 
