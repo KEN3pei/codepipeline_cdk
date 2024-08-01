@@ -13,4 +13,7 @@ jobs:
               run: |
                 echo "base is ${{ github.base_ref }}"
                 echo "source is ${{ github.head_ref }}"
+            - name: Conflict check
+              run: |
+                git pull --dry-run origin ${{ github.base_ref }}
 
