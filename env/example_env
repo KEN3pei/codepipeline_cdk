@@ -2,7 +2,7 @@ PROJECT=
 
 PIPELINE_NAME=
 
-SECRETS_MANAGER_ARN=
+SECRETS_MANAGER_ARN=arn:aws:secretsmanager:<region>:<aws_account>:secret:<secret_manager_name>
 ECR_REPOSITORY_ARN=
 
 SOURCE_CONNECTION_ARN=
