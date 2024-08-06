@@ -27,3 +27,5 @@ jobs:
               shell: bash
               run: |
                 git branch
+                git merge master --no-commit
+                git merge --abort
