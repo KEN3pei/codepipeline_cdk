@@ -26,6 +26,7 @@ jobs:
             - name: check_diff
               shell: bash
               run: |
-                git branch
-                git merge master --no-commit
-                git merge --abort
+                files=(`git diff origin/${{ github.base_ref }} --name-only|tr '\n' ' ' `)
+                for file in ${files[@]}; do
+                    echo ${file}
+                done
