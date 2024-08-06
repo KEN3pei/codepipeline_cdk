@@ -13,7 +13,17 @@ jobs:
               run: |
                 echo "base is ${{ github.base_ref }}"
                 echo "source is ${{ github.head_ref }}"
-            - name: Conflict check
+            - uses: actions/checkout@v4
+              name: checkout "${{ github.base_ref }}"
+              with:
+                fetch-depth: 1
+                ref: ${{ github.base_ref }}
+            - uses: actions/checkout@v4
+              name: checkout "${{ github.head_ref }}"
+              with:
+                fetch-depth: 1
+                ref: ${{ github.head_ref}}
+            - name: check_diff
+              shell: bash
               run: |
-                git pull --dry-run origin ${{ github.base_ref }}
-
+                git branch
