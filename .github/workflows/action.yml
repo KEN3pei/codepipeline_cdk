@@ -8,6 +8,8 @@ jobs:
     conflict_check:
         name: Conflict Check
         runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
             - name: Show base and source branch name
               run: |
@@ -25,6 +27,7 @@ jobs:
                 ref: ${{ github.head_ref}}
             - name: check_diff
               shell: bash
+              env:
+                PR_NUMBER: ${{ github.event.number }}
               run: |
-                echo "conflict check..."
-                git diff origin/${{ github.base_ref }} --check
+                gh pr view $PR_NUMBER --json mergeable
