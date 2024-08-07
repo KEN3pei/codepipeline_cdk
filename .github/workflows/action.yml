@@ -26,4 +26,6 @@ jobs:
             - name: check_diff
               shell: bash
               run: |
-                git diff origin/${{ github.base_ref }} --check
+                git merge --no-commit --no-ff origin/${{ github.base_ref }}
+                git merge --abort
+
