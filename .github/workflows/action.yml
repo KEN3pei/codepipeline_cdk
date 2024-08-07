@@ -26,4 +26,5 @@ jobs:
             - name: check_diff
               shell: bash
               run: |
-                git diff origin/${{ github.base_ref }}
+                git branch
+                git diff origin/${{ github.base_ref }} --check
