@@ -1,8 +1,10 @@
 name: "Conflict Merge Check"
 
 on:
-    pull_request:
-        types: [opened, reopened]
+    # pull_request:
+    #     types: [opened, reopened]
+    pull_request_target:
+        types: [assigned, opened, synchronize, reopened]
 
 jobs:
     conflict_check:
