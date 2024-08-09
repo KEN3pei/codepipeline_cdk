@@ -32,4 +32,8 @@ jobs:
               env:
                 PR_NUMBER: ${{ github.event.number }}
               run: |
-                gh pr view $PR_NUMBER --json mergeable
+                mergeable=`gh pr view $PR_NUMBER --json mergeable --jq '.mergeable'`
+                if [ $mergeable -eq "CONFLICTING" ]; then
+                    echo "CONFLICTING"
+                    exit 1
+                fi
