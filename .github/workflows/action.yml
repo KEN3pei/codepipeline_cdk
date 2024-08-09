@@ -1,13 +1,17 @@
 name: "Conflict Merge Check"
 
 on:
-    pull_request:
-        types: [opened, reopened]
+    # pull_request:
+    #     types: [opened, reopened]
+    pull_request_target:
+        types: [assigned, opened, synchronize, reopened]
 
 jobs:
     conflict_check:
         name: Conflict Check
         runs-on: ubuntu-latest
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
             - name: Show base and source branch name
               run: |
@@ -25,7 +29,11 @@ jobs:
                 ref: ${{ github.head_ref}}
             - name: check_diff
               shell: bash
+              env:
+                PR_NUMBER: ${{ github.event.number }}
               run: |
-                git merge --no-commit --no-ff origin/${{ github.base_ref }}
-                git merge --abort
-
+                mergeable=`gh pr view $PR_NUMBER --json mergeable --jq '.mergeable'`
+                if [ ${mergeable} = "CONFLICTING" ]; then
+                    echo "CONFLICTING"
+                    exit 1
+                fi
