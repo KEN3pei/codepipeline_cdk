@@ -14,20 +14,24 @@ jobs:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
             - name: Show base and source branch name
+              if: github.event_name == 'pull_request_target'
               run: |
                 echo "base is ${{ github.base_ref }}"
                 echo "source is ${{ github.head_ref }}"
             - uses: actions/checkout@v4
               name: checkout "${{ github.base_ref }}"
+              if: github.event_name == 'pull_request_target'
               with:
                 fetch-depth: 1
                 ref: ${{ github.base_ref }}
             - uses: actions/checkout@v4
               name: checkout "${{ github.head_ref }}"
+              if: github.event_name == 'pull_request_target'
               with:
                 fetch-depth: 1
                 ref: ${{ github.head_ref}}
             - name: check_diff
+              if: github.event_name == 'pull_request_target'
               shell: bash
               env:
                 PR_NUMBER: ${{ github.event.number }}
