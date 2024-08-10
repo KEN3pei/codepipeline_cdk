@@ -34,6 +34,6 @@ jobs:
               run: |
                 mergeable=`gh pr view $PR_NUMBER --json mergeable --jq '.mergeable'`
                 if [ ${mergeable} = "CONFLICTING" ]; then
-                    echo "CONFLICTING ERROR, PLEASE FIX IT FIRST."
+                    echo "CONFLICTING ERROR, PLEASE FIX IT FIRST..."
                     exit 1
                 fi
